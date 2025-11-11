@@ -24,10 +24,12 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] delete everything in main.ts
 - [x] put a basic leaflet map on the screen
 - [x] draw the player's location on the map
-- [ ] draw a grid of rectangle on the map
-- [ ] tokens are spawned in rectangles
-- [ ] player can interact with the cells and picck up tokens
-- [ ] player can placce tokens in a cell to combine the tokens of equal value together
+- [x] draw a grid of rectangle on the map
+- [x] tokens are spawned in rectangles
+- [x] player can interact with the cells and picck up tokens
+- [ ] player can placce tokens in a cell to combine the tokens of equal value
+- [ ] refractoring code
+      together
 
 ## D3.b: ...
 
