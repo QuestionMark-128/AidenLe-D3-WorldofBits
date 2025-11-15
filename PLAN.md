@@ -28,7 +28,7 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] tokens are spawned in rectangles
 - [x] player can interact with the cells and pick up tokens
 - [x] player can place tokens in a cell to combine the tokens of equal value
-- [ ] refractoring code
+- [x] refractoring code
       together
 
 ## D3.b: ...
