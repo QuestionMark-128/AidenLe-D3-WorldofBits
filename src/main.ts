@@ -11,7 +11,7 @@ const PLAYER_START = leaflet.latLng(
 const TILE_SIZE = 0.0001;
 const INTERACTION_RADIUS = 3;
 const TARGET_TOKEN = 16;
-const NEIGHBORHOOD_SIZE = 8;
+const NEIGHBORHOOD_SIZE = 48;
 const TOKEN_SPAWN_PROB = 0.15;
 
 const mapDiv = document.createElement("div");
@@ -109,17 +109,23 @@ function spawnCell(i: number, j: number) {
           return;
         }
 
-        if (tokenValue && heldToken == null) {
+        if (heldToken == null && tokenValue != null) {
           heldToken = tokenValue;
           tokenValue = null;
           rect.setStyle({ fillOpacity: 0.05 });
           updateStatus();
-        } else if (heldToken != null && tokenValue === heldToken) {
-          heldToken *= 2;
-          tokenValue = null;
-          rect.setStyle({ fillOpacity: 0.05 });
+        } else if (heldToken != null && tokenValue == null) {
+          tokenValue = heldToken;
+          heldToken = null;
+          rect.setStyle({ fillOpacity: 0.3 });
           updateStatus();
-          if (heldToken >= TARGET_TOKEN) {
+        } else if (heldToken != null && tokenValue == heldToken) {
+          tokenValue = heldToken * 2;
+          heldToken = null;
+          rect.setStyle({ fillOpacity: 0.3 });
+          updateStatus();
+
+          if (tokenValue >= TARGET_TOKEN) {
             alert("Congratulations! You created a high-value token!");
           }
         } else {

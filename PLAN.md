@@ -26,8 +26,8 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] draw the player's location on the map
 - [x] draw a grid of rectangle on the map
 - [x] tokens are spawned in rectangles
-- [x] player can interact with the cells and picck up tokens
-- [ ] player can placce tokens in a cell to combine the tokens of equal value
+- [x] player can interact with the cells and pick up tokens
+- [x] player can place tokens in a cell to combine the tokens of equal value
 - [ ] refractoring code
       together
 
