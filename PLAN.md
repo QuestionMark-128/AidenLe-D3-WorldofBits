@@ -31,8 +31,13 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] refractoring code
       together
 
-## D3.b: ...
+## D3.b: Globe-spanning Gameplay
 
-...
+Key Technical challenge: Can you make it so tokens can delete and spawn as the player moves?
+Key gameplay challenge: Can players move around the world?
 
-### 
+### Steps
+
+- [ ] player can move using WASD and scroll around the map
+- [ ] cells are memoryless and dissappear when off screen and spawn back in once on screen
+- [ ] there is a threshold for victory
