@@ -7,9 +7,10 @@ const CONFIG = {
   PLAYER_START: leaflet.latLng(36.997936938057016, -122.05703507501151),
   TILE_SIZE: 0.0001,
   INTERACTION_RADIUS: 3,
-  TARGET_TOKEN: 16,
+  TARGET_TOKEN: 32,
   NEIGHBORHOOD_SIZE: 48,
   TOKEN_SPAWN_PROB: 0.15,
+  VISIBILITY_PADDING: 1,
 };
 
 const mapDiv = document.createElement("div");
@@ -43,7 +44,8 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
-const playerMarker = leaflet.marker(CONFIG.PLAYER_START).addTo(map);
+const playerLatLng = CONFIG.PLAYER_START.clone();
+const playerMarker = leaflet.marker(playerLatLng).addTo(map);
 playerMarker.bindTooltip("You are here!");
 
 function cellKey(i: number, j: number) {
@@ -167,6 +169,14 @@ class Cell {
       this.rect.bindTooltip(`Token: ${this.tokenValue}`).openTooltip();
     }
   }
+
+  destroy() {
+    try {
+      this.rect.remove();
+    } catch (e) {
+      console.error("Failed to remove rectangle:", e);
+    }
+  }
 }
 
 const spawnedCells: Record<string, Cell> = {};
@@ -180,20 +190,52 @@ function spawnCell(i: number, j: number) {
   spawnedCells[key] = new Cell(i, j, tokenValue);
 }
 
+function pruneInvisibleCells() {
+  const bounds = map.getBounds();
+  for (const key of Object.keys(spawnedCells)) {
+    const c = spawnedCells[key];
+    const rectBounds = c.rect.getBounds();
+    if (!bounds.intersects(rectBounds)) {
+      c.destroy();
+      delete spawnedCells[key];
+    }
+  }
+}
+
+function spawnVisibleCells() {
+  const bounds = map.getBounds();
+  const ne = bounds.getNorthEast();
+  const sw = bounds.getSouthWest();
+  const topLeft = latLngToCell(ne.lat, sw.lng);
+  const bottomRight = latLngToCell(sw.lat, ne.lng);
+  const minI = bottomRight.i - CONFIG.VISIBILITY_PADDING;
+  const maxI = topLeft.i + CONFIG.VISIBILITY_PADDING;
+  const minJ = topLeft.j + CONFIG.VISIBILITY_PADDING;
+  const maxJ = bottomRight.j + CONFIG.VISIBILITY_PADDING;
+
+  for (let i = minI; i <= maxI; i++) {
+    for (let j = minJ; j <= maxJ; j++) {
+      spawnCell(i, j);
+    }
+  }
+  pruneInvisibleCells();
+}
+
 function spawnNeighborhood() {
-  const playerCell = latLngToCell(
-    CONFIG.PLAYER_START.lat,
-    CONFIG.PLAYER_START.lng,
-  );
+  const playerCell = latLngToCell(playerLatLng.lat, playerLatLng.lng);
   forNeighborhood(
     playerCell.i,
     playerCell.j,
     CONFIG.NEIGHBORHOOD_SIZE,
     (i, j) => {
-      if (luck([i, j].toString()) < CONFIG.TOKEN_SPAWN_PROB) spawnCell(i, j);
+      spawnCell(i, j);
     },
   );
+  pruneInvisibleCells();
 }
 
+spawnVisibleCells();
 spawnNeighborhood();
-map.on("moveend", spawnNeighborhood);
+map.on("moveend", () => {
+  spawnVisibleCells();
+});
