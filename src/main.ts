@@ -19,13 +19,40 @@ mapDiv.style.width = "100%";
 mapDiv.style.height = "500px";
 document.body.append(mapDiv);
 
+const hudDiv = document.createElement("div");
+hudDiv.id = "hud";
+hudDiv.style.margin = "8px";
+document.body.append(hudDiv);
+
 const statusDiv = document.createElement("div");
 statusDiv.id = "status";
 document.body.append(statusDiv);
 
+const controlsDiv = document.createElement("div");
+controlsDiv.id = "controls";
+controlsDiv.style.margin = "6px";
+document.body.append(controlsDiv);
+
+let playerLatLng = CONFIG.PLAYER_START.clone();
+
+let followPlayer = false;
+const followBtn = document.createElement("button");
+followBtn.innerText = "Follow Player: OFF";
+followBtn.addEventListener("click", () => {
+  followPlayer = !followPlayer;
+  followBtn.innerText = `Follow Player: ${followPlayer ? "ON" : "OFF"}`;
+  if (followPlayer) {
+    map.setView(playerLatLng, map.getZoom());
+  }
+});
+controlsDiv.append(followBtn);
+
 let heldToken: number | null = null;
 function updateStatus() {
-  statusDiv.innerText = "Holding: " + (heldToken ?? "none");
+  const cords = `${playerLatLng.lat.toFixed(6)}, ${
+    playerLatLng.lng.toFixed(6)
+  }`;
+  statusDiv.innerText = `Holding: ${heldToken ?? "none"} - Player: ${cords}`;
 }
 updateStatus();
 
@@ -44,7 +71,6 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
-const playerLatLng = CONFIG.PLAYER_START.clone();
 const playerMarker = leaflet.marker(playerLatLng).addTo(map);
 playerMarker.bindTooltip("You are here!");
 
@@ -135,8 +161,8 @@ class Cell {
 
   interact() {
     const playerCell = latLngToCell(
-      CONFIG.PLAYER_START.lat,
-      CONFIG.PLAYER_START.lng,
+      playerLatLng.lat,
+      playerLatLng.lng,
     );
     if (
       distanceCells(this.i, this.j, playerCell.i, playerCell.j) >
@@ -238,4 +264,53 @@ spawnVisibleCells();
 spawnNeighborhood();
 map.on("moveend", () => {
   spawnVisibleCells();
+});
+
+function moveplayer(di: number, dj: number) {
+  const deltaLat = di * CONFIG.TILE_SIZE;
+  const deltaLng = dj * CONFIG.TILE_SIZE;
+  playerLatLng = leaflet.latLng(
+    playerLatLng.lat + deltaLat,
+    playerLatLng.lng + deltaLng,
+  );
+  playerMarker.setLatLng(playerLatLng);
+  updateStatus();
+  spawnNeighborhood();
+  if (followPlayer) {
+    map.setView(playerLatLng, map.getZoom());
+    spawnVisibleCells();
+  }
+}
+
+document.addEventListener("keydown", (ev) => {
+  const activateTag =
+    (document.activeElement && document.activeElement.tagName) || "";
+  if (activateTag === "INPUT" || activateTag === "TEXTAREA") {
+    return;
+  }
+  switch (ev.key) {
+    case "w":
+    case "W":
+      moveplayer(1, 0);
+      break;
+    case "s":
+    case "S":
+      moveplayer(-1, 0);
+      break;
+    case "a":
+    case "A":
+      moveplayer(0, -1);
+      break;
+    case "d":
+    case "D":
+      moveplayer(0, 1);
+      break;
+    case " ":
+      map.setView(playerLatLng, map.getZoom());
+      spawnVisibleCells();
+      break;
+    default:
+      return;
+  }
+  ev.preventDefault();
 });
