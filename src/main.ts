@@ -1,61 +1,34 @@
+// IMPORTS
 import leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./_leafletWorkaround.ts";
 import luck from "./_luck.ts";
 
+// CONFIGS
 const CONFIG = {
   PLAYER_START: leaflet.latLng(36.997936938057016, -122.05703507501151),
   TILE_SIZE: 0.0001,
   INTERACTION_RADIUS: 3,
-  TARGET_TOKEN: 32,
+  TARGET_TOKEN: 8,
   NEIGHBORHOOD_SIZE: 48,
   TOKEN_SPAWN_PROB: 0.15,
   VISIBILITY_PADDING: 1,
 };
 
-const mapDiv = document.createElement("div");
-mapDiv.id = "map";
-mapDiv.style.width = "100%";
-mapDiv.style.height = "500px";
-document.body.append(mapDiv);
-
-const hudDiv = document.createElement("div");
-hudDiv.id = "hud";
-hudDiv.style.margin = "8px";
-document.body.append(hudDiv);
-
-const statusDiv = document.createElement("div");
-statusDiv.id = "status";
-document.body.append(statusDiv);
-
-const controlsDiv = document.createElement("div");
-controlsDiv.id = "controls";
-controlsDiv.style.margin = "6px";
-document.body.append(controlsDiv);
-
-let playerLatLng = CONFIG.PLAYER_START.clone();
-
-let followPlayer = false;
-const followBtn = document.createElement("button");
-followBtn.innerText = "Follow Player: OFF";
-followBtn.addEventListener("click", () => {
-  followPlayer = !followPlayer;
-  followBtn.innerText = `Follow Player: ${followPlayer ? "ON" : "OFF"}`;
-  if (followPlayer) {
-    map.setView(playerLatLng, map.getZoom());
-  }
-});
-controlsDiv.append(followBtn);
-
-let heldToken: number | null = null;
-function updateStatus() {
-  const cords = `${playerLatLng.lat.toFixed(6)}, ${
-    playerLatLng.lng.toFixed(6)
-  }`;
-  statusDiv.innerText = `Holding: ${heldToken ?? "none"} - Player: ${cords}`;
+// CONTAINERS
+function createDiv(id: string, styles: Partial<CSSStyleDeclaration> = {}) {
+  const div = document.createElement("div");
+  div.id = id;
+  Object.assign(div.style, styles);
+  document.body.append(div);
+  return div;
 }
-updateStatus();
 
+const mapDiv = createDiv("map", { width: "100%", height: "500px" });
+const statusDiv = createDiv("status");
+const controlsDiv = createDiv("controls", { margin: "6px" });
+
+// MAP SETUP
 const map = leaflet.map(mapDiv, {
   center: CONFIG.PLAYER_START,
   zoom: 19,
@@ -71,9 +44,21 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
+let playerLatLng = CONFIG.PLAYER_START.clone();
 const playerMarker = leaflet.marker(playerLatLng).addTo(map);
 playerMarker.bindTooltip("You are here!");
 
+// PLAYER HUD
+let heldToken: number | null = null;
+function updateStatus() {
+  const cords = `${playerLatLng.lat.toFixed(6)}, ${
+    playerLatLng.lng.toFixed(6)
+  }`;
+  statusDiv.innerText = `Holding: ${heldToken ?? "none"} - Player: ${cords}`;
+}
+updateStatus();
+
+// UTILS
 function cellKey(i: number, j: number) {
   return `${i},${j}`;
 }
@@ -114,6 +99,7 @@ function forNeighborhood(
   }
 }
 
+// CELL CLASS
 type CellToken = number | null;
 
 class Cell {
@@ -134,7 +120,7 @@ class Cell {
     }).addTo(map);
 
     this.bindPopup();
-    if (tokenValue) this.rect.bindTooltip(`Token: ${tokenValue}`).openTooltip();
+    if (tokenValue) this.rect.bindTooltip(`Token: ${tokenValue}`);
   }
 
   bindPopup() {
@@ -205,12 +191,12 @@ class Cell {
   }
 }
 
+// CELL SPAWNS
 const spawnedCells: Record<string, Cell> = {};
 
 function spawnCell(i: number, j: number) {
   const key = cellKey(i, j);
   if (spawnedCells[key]) return;
-
   const tokenValue: CellToken =
     luck([i, j].toString()) < CONFIG.TOKEN_SPAWN_PROB ? 1 : null;
   spawnedCells[key] = new Cell(i, j, tokenValue);
@@ -218,14 +204,13 @@ function spawnCell(i: number, j: number) {
 
 function pruneInvisibleCells() {
   const bounds = map.getBounds();
-  for (const key of Object.keys(spawnedCells)) {
+  Object.keys(spawnedCells).forEach((key) => {
     const c = spawnedCells[key];
-    const rectBounds = c.rect.getBounds();
-    if (!bounds.intersects(rectBounds)) {
+    if (!bounds.intersects(c.rect.getBounds())) {
       c.destroy();
       delete spawnedCells[key];
     }
-  }
+  });
 }
 
 function spawnVisibleCells() {
@@ -234,6 +219,7 @@ function spawnVisibleCells() {
   const sw = bounds.getSouthWest();
   const topLeft = latLngToCell(ne.lat, sw.lng);
   const bottomRight = latLngToCell(sw.lat, ne.lng);
+
   const minI = bottomRight.i - CONFIG.VISIBILITY_PADDING;
   const maxI = topLeft.i + CONFIG.VISIBILITY_PADDING;
   const minJ = topLeft.j + CONFIG.VISIBILITY_PADDING;
@@ -253,57 +239,60 @@ function spawnNeighborhood() {
     playerCell.i,
     playerCell.j,
     CONFIG.NEIGHBORHOOD_SIZE,
-    (i, j) => {
-      spawnCell(i, j);
-    },
+    spawnCell,
   );
   pruneInvisibleCells();
 }
 
-spawnVisibleCells();
-spawnNeighborhood();
-map.on("moveend", () => {
-  spawnVisibleCells();
-});
+// PLAYER MOVEMENT
+let followPlayer = false;
 
-function moveplayer(di: number, dj: number) {
-  const deltaLat = di * CONFIG.TILE_SIZE;
-  const deltaLng = dj * CONFIG.TILE_SIZE;
+function movePlayer(di: number, dj: number) {
   playerLatLng = leaflet.latLng(
-    playerLatLng.lat + deltaLat,
-    playerLatLng.lng + deltaLng,
+    playerLatLng.lat + di * CONFIG.TILE_SIZE,
+    playerLatLng.lng + dj * CONFIG.TILE_SIZE,
   );
   playerMarker.setLatLng(playerLatLng);
   updateStatus();
   spawnNeighborhood();
   if (followPlayer) {
     map.setView(playerLatLng, map.getZoom());
-    spawnVisibleCells();
   }
 }
 
+// CONTROLS
+const followBtn = document.createElement("button");
+followBtn.innerText = "Follow Player: OFF";
+followBtn.addEventListener("click", () => {
+  followPlayer = !followPlayer;
+  followBtn.innerText = `Follow Player: ${followPlayer ? "ON" : "OFF"}`;
+  if (followPlayer) {
+    map.setView(playerLatLng, map.getZoom());
+  }
+});
+controlsDiv.append(followBtn);
+
+// EVENT LISTENERS
+map.on("moveend", () => {
+  spawnVisibleCells();
+});
+
 document.addEventListener("keydown", (ev) => {
-  const activateTag =
-    (document.activeElement && document.activeElement.tagName) || "";
-  if (activateTag === "INPUT" || activateTag === "TEXTAREA") {
+  if ((document.activeElement?.tagName || "") === "INPUT") {
     return;
   }
-  switch (ev.key) {
+  switch (ev.key.toLowerCase()) {
     case "w":
-    case "W":
-      moveplayer(1, 0);
+      movePlayer(1, 0);
       break;
     case "s":
-    case "S":
-      moveplayer(-1, 0);
+      movePlayer(-1, 0);
       break;
     case "a":
-    case "A":
-      moveplayer(0, -1);
+      movePlayer(0, -1);
       break;
     case "d":
-    case "D":
-      moveplayer(0, 1);
+      movePlayer(0, 1);
       break;
     case " ":
       map.setView(playerLatLng, map.getZoom());
@@ -314,3 +303,7 @@ document.addEventListener("keydown", (ev) => {
   }
   ev.preventDefault();
 });
+
+// SPAWN INITIAL
+spawnVisibleCells();
+spawnNeighborhood();

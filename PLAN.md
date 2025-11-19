@@ -41,4 +41,4 @@ Key gameplay challenge: Can players move around the world?
 - [x] player can move using WASD and scroll around the map
 - [x] cells are memoryless and dissappear when off screen and spawn back in once on screen
 - [x] there is a threshold for victory
-- [ ] refactoring Code
+- [x] refactoring Code
