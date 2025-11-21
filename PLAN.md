@@ -42,3 +42,14 @@ Key gameplay challenge: Can players move around the world?
 - [x] cells are memoryless and dissappear when off screen and spawn back in once on screen
 - [x] there is a threshold for victory
 - [x] refactoring Code
+
+## D3.c: Object Persistence
+
+Key Technical challenge: Do non-modified cells forget their memory but modifed cells do when scolled offscreen?
+Key gameplay challenge: Do cells have memory when they are not visible if they've been modifed?
+
+### Steps
+
+- [x] Cells apply Flyweight pattern so cells that haven't been modifed do not require memory saving
+- [ ] Cells use memento pattern to preserve the state of modifed cells when scolled off-screen and are restored when in view
+- [ ] refactoring Code
