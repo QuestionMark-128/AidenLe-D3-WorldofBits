@@ -52,4 +52,4 @@ Key gameplay challenge: Do cells have memory when they are not visible if they'v
 
 - [x] Cells apply Flyweight pattern so cells that haven't been modifed do not require memory saving
 - [x] Cells use memento pattern to preserve the state of modifed cells when scolled off-screen and are restored when in view
-- [ ] refactoring Code
+- [x] refactoring Code

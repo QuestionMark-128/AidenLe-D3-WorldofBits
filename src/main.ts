@@ -1,10 +1,14 @@
+// ============================================================================
 // IMPORTS
+// ============================================================================
 import leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./_leafletWorkaround.ts";
 import luck from "./_luck.ts";
 
+// ============================================================================
 // CONFIGS
+// ============================================================================
 const CONFIG = {
   PLAYER_START: leaflet.latLng(36.997936938057016, -122.05703507501151),
   TILE_SIZE: 0.0001,
@@ -15,7 +19,9 @@ const CONFIG = {
   VISIBILITY_PADDING: 1,
 };
 
+// ============================================================================
 // CONTAINERS
+// ============================================================================
 function createDiv(id: string, styles: Partial<CSSStyleDeclaration> = {}) {
   const div = document.createElement("div");
   div.id = id;
@@ -28,7 +34,9 @@ const mapDiv = createDiv("map", { width: "100%", height: "500px" });
 const statusDiv = createDiv("status");
 const controlsDiv = createDiv("controls", { margin: "6px" });
 
+// ============================================================================
 // MAP SETUP
+// ============================================================================
 const map = leaflet.map(mapDiv, {
   center: CONFIG.PLAYER_START,
   zoom: 19,
@@ -48,7 +56,9 @@ let playerLatLng = CONFIG.PLAYER_START.clone();
 const playerMarker = leaflet.marker(playerLatLng).addTo(map);
 playerMarker.bindTooltip("You are here!");
 
+// ============================================================================
 // PLAYER HUD
+// ============================================================================
 let heldToken: number | null = null;
 function updateStatus() {
   const cords = `${playerLatLng.lat.toFixed(6)}, ${
@@ -58,7 +68,9 @@ function updateStatus() {
 }
 updateStatus();
 
+// ============================================================================
 // UTILS
+// ============================================================================
 function cellKey(i: number, j: number) {
   return `${i},${j}`;
 }
@@ -99,7 +111,9 @@ function forNeighborhood(
   }
 }
 
+// ============================================================================
 // Cell Storage
+// ============================================================================
 type SavedCell = {
   tokenValue: number | null;
 };
@@ -202,7 +216,9 @@ class Cell {
   }
 }
 
+// ============================================================================
 // CELL SPAWNS
+// ============================================================================
 const spawnedCells: Record<string, Cell> = {};
 
 function spawnCell(i: number, j: number) {
@@ -259,7 +275,9 @@ function spawnNeighborhood() {
   pruneInvisibleCells();
 }
 
+// ============================================================================
 // PLAYER MOVEMENT
+// ============================================================================
 let followPlayer = false;
 
 function movePlayer(di: number, dj: number) {
@@ -275,7 +293,9 @@ function movePlayer(di: number, dj: number) {
   }
 }
 
+// ============================================================================
 // CONTROLS
+// ============================================================================
 const followBtn = document.createElement("button");
 followBtn.innerText = "Follow Player: OFF";
 followBtn.addEventListener("click", () => {
@@ -287,7 +307,9 @@ followBtn.addEventListener("click", () => {
 });
 controlsDiv.append(followBtn);
 
+// ============================================================================
 // EVENT LISTENERS
+// ============================================================================
 map.on("moveend", () => {
   spawnVisibleCells();
 });
@@ -319,6 +341,8 @@ document.addEventListener("keydown", (ev) => {
   ev.preventDefault();
 });
 
+// ============================================================================
 // SPAWN INITIAL
+// ============================================================================
 spawnVisibleCells();
 spawnNeighborhood();
