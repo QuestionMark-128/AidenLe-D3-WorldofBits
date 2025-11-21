@@ -99,6 +99,13 @@ function forNeighborhood(
   }
 }
 
+// Cell Storage
+type SavedCell = {
+  tokenValue: number | null;
+};
+
+const savedCells: Record<string, SavedCell> = {};
+
 // CELL CLASS
 type CellToken = number | null;
 
@@ -174,6 +181,10 @@ class Cell {
       alert("Nothing to do here!");
     }
 
+    savedCells[cellKey(this.i, this.j)] = {
+      tokenValue: this.tokenValue,
+    };
+
     updateStatus();
     this.rect.setStyle({ fillOpacity: this.tokenValue ? 0.3 : 0.05 });
     this.rect.unbindTooltip();
@@ -197,8 +208,12 @@ const spawnedCells: Record<string, Cell> = {};
 function spawnCell(i: number, j: number) {
   const key = cellKey(i, j);
   if (spawnedCells[key]) return;
-  const tokenValue: CellToken =
-    luck([i, j].toString()) < CONFIG.TOKEN_SPAWN_PROB ? 1 : null;
+  let tokenValue: CellToken;
+  if (savedCells[key]) {
+    tokenValue = savedCells[key].tokenValue;
+  } else {
+    tokenValue = luck([i, j].toString()) < CONFIG.TOKEN_SPAWN_PROB ? 1 : null;
+  }
   spawnedCells[key] = new Cell(i, j, tokenValue);
 }
 
