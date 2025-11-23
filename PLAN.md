@@ -53,3 +53,16 @@ Key gameplay challenge: Do cells have memory when they are not visible if they'v
 - [x] Cells apply Flyweight pattern so cells that haven't been modifed do not require memory saving
 - [x] Cells use memento pattern to preserve the state of modifed cells when scolled off-screen and are restored when in view
 - [x] refactoring Code
+
+## D3.d: Gameplay Across Real-world Space and Time
+
+Key Technical challenge: Browser geolocation API should be used to control player character movement and the browser localStorage API should be used to persist game state across page loads.
+Key gameplay challenge: Does the player move by moving their ddevice in the real world? Does the game resume when the game is closed and reopened? Can the game restart and can the player switch between button-based and geolocation-based movement?
+
+### Steps
+
+- [ ] The player can move their character by moving their device around the real world
+- [ ] The game can continue even affter the player closes and reopens the game
+- [ ] The player can restart the game
+- [ ] The player can switch between button-based and geolocation-based movement
+- [ ] refactoring Code
