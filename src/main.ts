@@ -20,19 +20,47 @@ const CONFIG = {
 };
 
 // ============================================================================
-// MOVEMENT FACADE (new)
+// PERSISTENCE
 // ============================================================================
+const SAVE_KEY = "geoGameSave";
 
+function saveGame() {
+  const data = {
+    playerLat: playerLatLng.lat,
+    playerLng: playerLatLng.lng,
+    savedCells,
+    heldToken,
+  };
+  localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+}
+
+function loadGame() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return false;
+
+  try {
+    const data = JSON.parse(raw);
+    playerLatLng = leaflet.latLng(data.playerLat, data.playerLng);
+    Object.assign(savedCells, data.savedCells);
+    heldToken = data.heldToken;
+    return true;
+  } catch (e) {
+    console.error("Failed to load save:", e);
+    return false;
+  }
+}
+
+// ============================================================================
+// MOVEMENT FACADE
+// ============================================================================
 type MoveCallback = (lat: number, lng: number, absolute: boolean) => void;
 
-/** Facade interface */
 interface MovementController {
   start(): void;
   stop(): void;
   onMove(cb: MoveCallback): void;
 }
 
-/** Geolocation implementation */
 class GeoMovement implements MovementController {
   private cb: MoveCallback | null = null;
   private watchId: number | null = null;
@@ -170,7 +198,9 @@ type SavedCell = {
 
 const savedCells: Record<string, SavedCell> = {};
 
+// ============================================================================
 // CELL CLASS
+// ============================================================================
 type CellToken = number | null;
 
 class Cell {
@@ -255,6 +285,8 @@ class Cell {
     if (this.tokenValue) {
       this.rect.bindTooltip(`Token: ${this.tokenValue}`).openTooltip();
     }
+
+    saveGame();
   }
 
   destroy() {
@@ -335,6 +367,7 @@ const movement: MovementController = new GeoMovement();
 movement.onMove((lat, lng, absolute) => {
   if (absolute) {
     playerLatLng = leaflet.latLng(lat, lng);
+    saveGame();
   }
 
   playerMarker.setLatLng(playerLatLng);
@@ -356,9 +389,7 @@ followBtn.innerText = "Follow Player: OFF";
 followBtn.addEventListener("click", () => {
   followPlayer = !followPlayer;
   followBtn.innerText = `Follow Player: ${followPlayer ? "ON" : "OFF"}`;
-  if (followPlayer) {
-    map.setView(playerLatLng, map.getZoom());
-  }
+  if (followPlayer) map.setView(playerLatLng, map.getZoom());
 });
 controlsDiv.append(followBtn);
 
@@ -377,35 +408,11 @@ document.addEventListener("keydown", (ev) => {
   }
 });
 
-// document.addEventListener("keydown", (ev) => {
-//   if ((document.activeElement?.tagName || "") === "INPUT") {
-//     return;
-//   }
-//   switch (ev.key.toLowerCase()) {
-//     case "w":
-//       movePlayer(1, 0);
-//       break;
-//     case "s":
-//       movePlayer(-1, 0);
-//       break;
-//     case "a":
-//       movePlayer(0, -1);
-//       break;
-//     case "d":
-//       movePlayer(0, 1);
-//       break;
-//     case " ":
-//       map.setView(playerLatLng, map.getZoom());
-//       spawnVisibleCells();
-//       break;
-//     default:
-//       return;
-//   }
-//   ev.preventDefault();
-// });
-
 // ============================================================================
 // SPAWN INITIAL
 // ============================================================================
+loadGame();
+playerMarker.setLatLng(playerLatLng);
+updateStatus();
 spawnVisibleCells();
 spawnNeighborhood();
