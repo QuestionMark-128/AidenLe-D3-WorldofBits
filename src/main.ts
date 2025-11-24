@@ -20,6 +20,56 @@ const CONFIG = {
 };
 
 // ============================================================================
+// MOVEMENT FACADE (new)
+// ============================================================================
+
+type MoveCallback = (lat: number, lng: number, absolute: boolean) => void;
+
+/** Facade interface */
+interface MovementController {
+  start(): void;
+  stop(): void;
+  onMove(cb: MoveCallback): void;
+}
+
+/** Geolocation implementation */
+class GeoMovement implements MovementController {
+  private cb: MoveCallback | null = null;
+  private watchId: number | null = null;
+
+  constructor(
+    private options: PositionOptions = { enableHighAccuracy: true },
+  ) {}
+
+  start() {
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported.");
+      return;
+    }
+
+    this.watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        if (this.cb) this.cb(latitude, longitude, true);
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        alert("Enable location access to move your character.");
+      },
+      this.options,
+    );
+  }
+
+  stop() {
+    if (this.watchId !== null) navigator.geolocation.clearWatch(this.watchId);
+  }
+
+  onMove(cb: MoveCallback) {
+    this.cb = cb;
+  }
+}
+
+// ============================================================================
 // CONTAINERS
 // ============================================================================
 function createDiv(id: string, styles: Partial<CSSStyleDeclaration> = {}) {
@@ -280,18 +330,23 @@ function spawnNeighborhood() {
 // ============================================================================
 let followPlayer = false;
 
-function movePlayer(di: number, dj: number) {
-  playerLatLng = leaflet.latLng(
-    playerLatLng.lat + di * CONFIG.TILE_SIZE,
-    playerLatLng.lng + dj * CONFIG.TILE_SIZE,
-  );
+const movement: MovementController = new GeoMovement();
+
+movement.onMove((lat, lng, absolute) => {
+  if (absolute) {
+    playerLatLng = leaflet.latLng(lat, lng);
+  }
+
   playerMarker.setLatLng(playerLatLng);
   updateStatus();
   spawnNeighborhood();
+
   if (followPlayer) {
     map.setView(playerLatLng, map.getZoom());
   }
-}
+});
+
+movement.start();
 
 // ============================================================================
 // CONTROLS
@@ -315,31 +370,39 @@ map.on("moveend", () => {
 });
 
 document.addEventListener("keydown", (ev) => {
-  if ((document.activeElement?.tagName || "") === "INPUT") {
-    return;
+  if (ev.key === " ") {
+    map.setView(playerLatLng, map.getZoom());
+    spawnVisibleCells();
+    ev.preventDefault();
   }
-  switch (ev.key.toLowerCase()) {
-    case "w":
-      movePlayer(1, 0);
-      break;
-    case "s":
-      movePlayer(-1, 0);
-      break;
-    case "a":
-      movePlayer(0, -1);
-      break;
-    case "d":
-      movePlayer(0, 1);
-      break;
-    case " ":
-      map.setView(playerLatLng, map.getZoom());
-      spawnVisibleCells();
-      break;
-    default:
-      return;
-  }
-  ev.preventDefault();
 });
+
+// document.addEventListener("keydown", (ev) => {
+//   if ((document.activeElement?.tagName || "") === "INPUT") {
+//     return;
+//   }
+//   switch (ev.key.toLowerCase()) {
+//     case "w":
+//       movePlayer(1, 0);
+//       break;
+//     case "s":
+//       movePlayer(-1, 0);
+//       break;
+//     case "a":
+//       movePlayer(0, -1);
+//       break;
+//     case "d":
+//       movePlayer(0, 1);
+//       break;
+//     case " ":
+//       map.setView(playerLatLng, map.getZoom());
+//       spawnVisibleCells();
+//       break;
+//     default:
+//       return;
+//   }
+//   ev.preventDefault();
+// });
 
 // ============================================================================
 // SPAWN INITIAL
