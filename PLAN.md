@@ -65,4 +65,4 @@ Key gameplay challenge: Does the player move by moving their ddevice in the real
 - [x] The game can continue even affter the player closes and reopens the game
 - [x] The player can restart the game
 - [x] The player can switch between button-based and geolocation-based movement
-- [ ] refactoring Code
+- [x] refactoring Code
