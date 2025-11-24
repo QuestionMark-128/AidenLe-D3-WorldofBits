@@ -65,6 +65,7 @@ interface MovementController {
   onMove(cb: MoveCallback): void;
 }
 
+// **Location Movement**
 class GeoMovement implements MovementController {
   private cb: MoveCallback | null = null;
   private watchId: number | null = null;
@@ -97,6 +98,7 @@ class GeoMovement implements MovementController {
   }
 }
 
+// **WASD Movement**
 class ButtonMovement implements MovementController {
   private cb: MoveCallback | null = null;
   private keys: Record<string, boolean> = {};
