@@ -67,6 +67,7 @@ class GeoMovement implements MovementController {
 
   constructor(
     private options: PositionOptions = { enableHighAccuracy: true },
+    private updateInterval = 1000,
   ) {}
 
   start() {
@@ -75,14 +76,20 @@ class GeoMovement implements MovementController {
       return;
     }
 
-    this.watchId = navigator.geolocation.watchPosition(
+    this.fetchPosition();
+    this.watchId = self.setInterval(() => {
+      this.fetchPosition();
+    }, this.updateInterval);
+  }
+
+  private fetchPosition() {
+    navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
         if (this.cb) this.cb(latitude, longitude, true);
       },
       (err) => {
         console.error("Geolocation error:", err);
-        alert("Enable location access to move your character.");
       },
       this.options,
     );
@@ -392,6 +399,27 @@ followBtn.addEventListener("click", () => {
   if (followPlayer) map.setView(playerLatLng, map.getZoom());
 });
 controlsDiv.append(followBtn);
+
+const resetBtn = document.createElement("button");
+resetBtn.innerText = "Reset Game";
+resetBtn.addEventListener("click", () => {
+  if (!confirm("Are you sure you want to reset the game?")) return;
+
+  localStorage.removeItem(SAVE_KEY);
+  Object.keys(savedCells).forEach((key) => delete savedCells[key]);
+  Object.keys(spawnedCells).forEach((key) => spawnedCells[key].destroy());
+  Object.keys(spawnedCells).forEach((key) => delete spawnedCells[key]);
+
+  playerLatLng = CONFIG.PLAYER_START.clone();
+  heldToken = null;
+  playerMarker.setLatLng(playerLatLng);
+  updateStatus();
+
+  spawnVisibleCells();
+  spawnNeighborhood();
+});
+
+controlsDiv.append(resetBtn);
 
 // ============================================================================
 // EVENT LISTENERS
