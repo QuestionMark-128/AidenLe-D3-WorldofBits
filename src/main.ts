@@ -30,6 +30,7 @@ function saveGame() {
     playerLng: playerLatLng.lng,
     savedCells,
     heldToken,
+    useGeo,
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
 }
@@ -43,6 +44,9 @@ function loadGame() {
     playerLatLng = leaflet.latLng(data.playerLat, data.playerLng);
     Object.assign(savedCells, data.savedCells);
     heldToken = data.heldToken;
+    if (typeof data.useGeo === "boolean") {
+      useGeo = data.useGeo;
+    }
     return true;
   } catch (e) {
     console.error("Failed to load save:", e);
@@ -65,43 +69,81 @@ class GeoMovement implements MovementController {
   private cb: MoveCallback | null = null;
   private watchId: number | null = null;
 
-  constructor(
-    private options: PositionOptions = { enableHighAccuracy: true },
-    private updateInterval = 1000,
-  ) {}
-
   start() {
     if (!navigator.geolocation) {
       alert("Geolocation not supported.");
       return;
     }
 
-    this.fetchPosition();
-    this.watchId = self.setInterval(() => {
-      this.fetchPosition();
-    }, this.updateInterval);
-  }
-
-  private fetchPosition() {
-    navigator.geolocation.getCurrentPosition(
+    this.watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
         if (this.cb) this.cb(latitude, longitude, true);
       },
-      (err) => {
-        console.error("Geolocation error:", err);
-      },
-      this.options,
+      (err) => console.error("Geolocation error:", err),
+      { enableHighAccuracy: true },
     );
   }
 
   stop() {
-    if (this.watchId !== null) navigator.geolocation.clearWatch(this.watchId);
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
   }
 
   onMove(cb: MoveCallback) {
     this.cb = cb;
   }
+}
+
+class ButtonMovement implements MovementController {
+  private cb: MoveCallback | null = null;
+  private keys: Record<string, boolean> = {};
+  private intervalId: number | null = null;
+  private speed = CONFIG.TILE_SIZE;
+
+  start() {
+    document.addEventListener("keydown", this.onKeyDown);
+    document.addEventListener("keyup", this.onKeyUp);
+
+    this.intervalId = self.setInterval(() => {
+      if (!this.cb) return;
+
+      let deltaLat = 0;
+      let deltaLng = 0;
+      if (this.keys["w"]) deltaLat += this.speed;
+      if (this.keys["s"]) deltaLat -= this.speed;
+      if (this.keys["a"]) deltaLng -= this.speed;
+      if (this.keys["d"]) deltaLng += this.speed;
+
+      if (deltaLat !== 0 || deltaLng !== 0) {
+        this.cb(
+          playerLatLng.lat + deltaLat,
+          playerLatLng.lng + deltaLng,
+          false,
+        );
+      }
+    }, 100);
+  }
+
+  stop() {
+    document.removeEventListener("keydown", this.onKeyDown);
+    document.removeEventListener("keyup", this.onKeyUp);
+    if (this.intervalId !== null) clearInterval(this.intervalId);
+  }
+
+  onMove(cb: MoveCallback) {
+    this.cb = cb;
+  }
+
+  private onKeyDown = (ev: KeyboardEvent) => {
+    this.keys[ev.key.toLowerCase()] = true;
+  };
+
+  private onKeyUp = (ev: KeyboardEvent) => {
+    this.keys[ev.key.toLowerCase()] = false;
+  };
 }
 
 // ============================================================================
@@ -368,25 +410,34 @@ function spawnNeighborhood() {
 // PLAYER MOVEMENT
 // ============================================================================
 let followPlayer = false;
+let useGeo = true;
+let movement: MovementController;
 
-const movement: MovementController = new GeoMovement();
+function switchMovementMode() {
+  if (movement) movement.stop();
 
-movement.onMove((lat, lng, absolute) => {
-  if (absolute) {
-    playerLatLng = leaflet.latLng(lat, lng);
-    saveGame();
+  if (useGeo) {
+    movement = new GeoMovement();
+  } else {
+    movement = new ButtonMovement();
   }
 
-  playerMarker.setLatLng(playerLatLng);
-  updateStatus();
-  spawnNeighborhood();
+  movement.onMove((lat, lng, absolute) => {
+    if (absolute) {
+      playerLatLng = leaflet.latLng(lat, lng);
+      saveGame();
+    } else {
+      playerLatLng = leaflet.latLng(lat, lng);
+    }
 
-  if (followPlayer) {
-    map.setView(playerLatLng, map.getZoom());
-  }
-});
+    playerMarker.setLatLng(playerLatLng);
+    updateStatus();
+    spawnNeighborhood();
+    if (followPlayer) map.setView(playerLatLng, map.getZoom());
+  });
 
-movement.start();
+  movement.start();
+}
 
 // ============================================================================
 // CONTROLS
@@ -399,6 +450,15 @@ followBtn.addEventListener("click", () => {
   if (followPlayer) map.setView(playerLatLng, map.getZoom());
 });
 controlsDiv.append(followBtn);
+
+const modeBtn = document.createElement("button");
+modeBtn.innerText = `Movement: ${useGeo ? "Geolocation" : "Keyboard"}`;
+modeBtn.addEventListener("click", () => {
+  useGeo = !useGeo;
+  modeBtn.innerText = `Movement: ${useGeo ? "Geolocation" : "Keyboard"}`;
+  switchMovementMode();
+});
+controlsDiv.append(modeBtn);
 
 const resetBtn = document.createElement("button");
 resetBtn.innerText = "Reset Game";
@@ -418,7 +478,6 @@ resetBtn.addEventListener("click", () => {
   spawnVisibleCells();
   spawnNeighborhood();
 });
-
 controlsDiv.append(resetBtn);
 
 // ============================================================================
@@ -444,3 +503,4 @@ playerMarker.setLatLng(playerLatLng);
 updateStatus();
 spawnVisibleCells();
 spawnNeighborhood();
+switchMovementMode();
